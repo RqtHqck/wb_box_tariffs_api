@@ -2,7 +2,7 @@ import env from "#config/env/env.js";
 import express from 'express';
 import { ErrorsHandlerMiddleware } from "#middlewares/errorHandler.middleware.js";
 import knex, { migrate, seed } from "#postgres/knex.js";
-
+import { sheduleCrone } from "#utils/cron.js";
 await migrate.latest();
 await seed.run();
 
