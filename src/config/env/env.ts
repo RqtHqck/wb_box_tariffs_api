@@ -21,6 +21,7 @@ const envSchema = z.object({
     ]),
     WB_TARIFF_API_URL: z.union([z.undefined(), z.string()]),
     WB_API_BEARER_TOKEN: z.union([z.undefined(), z.string()]),
+    GOOGLE_APPLICATION_CREDENTIALS: z.union([z.undefined(), z.string()]),
 });
 
 const env = envSchema.parse({
@@ -32,7 +33,8 @@ const env = envSchema.parse({
     NODE_ENV: process.env.NODE_ENV,
     APP_PORT: process.env.APP_PORT,
     WB_TARIFF_API_URL: process.env.WB_TARIFF_API_URL,
-    WB_API_BEARER_TOKEN: process.env.WB_API_BEARER_TOKEN
+    WB_API_BEARER_TOKEN: process.env.WB_API_BEARER_TOKEN,
+    GOOGLE_APPLICATION_CREDENTIALS: process.env.GOOGLE_APPLICATION_CREDENTIALS
 });
 
 export default env;
