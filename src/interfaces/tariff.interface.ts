@@ -1,15 +1,15 @@
 
 
 export interface IBoxTariff {
-  boxDeliveryBase: number | string;
-  boxDeliveryCoefExpr: number | string;
-  boxDeliveryLiter: number | string;
-  boxDeliveryMarketplaceBase: number | string;
-  boxDeliveryMarketplaceCoefExpr: number | string;
-  boxDeliveryMarketplaceLiter: number | string;
-  boxStorageBase: number | string;
-  boxStorageCoefExpr: number | string;
-  boxStorageLiter: number | string;
+  boxDeliveryBase: string;
+  boxDeliveryCoefExpr: string;
+  boxDeliveryLiter: string;
+  boxDeliveryMarketplaceBase: string;
+  boxDeliveryMarketplaceCoefExpr: string;
+  boxDeliveryMarketplaceLiter: string;
+  boxStorageBase: string;
+  boxStorageCoefExpr: string;
+  boxStorageLiter: string;
   geoName: string;
   warehouseName: string;
 }
