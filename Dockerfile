@@ -1,24 +1,20 @@
-# your node version
-FROM node:20-alpine AS deps-prod
+# Используем Node.js
+FROM node:20-alpine
 
+# Создаём рабочую папку
 WORKDIR /app
 
-COPY ./package*.json .
+# Копируем package.json и package-lock.json (или yarn.lock)
+COPY package*.json ./
 
-RUN npm install --omit=dev
+# Устанавливаем все зависимости сразу (включая dev, чтобы был tsc)
+RUN npm install
 
-FROM deps-prod AS build
-
-RUN npm install --include=dev
-
+# Копируем весь исходный код
 COPY . .
 
+# Билдим TypeScript
 RUN npm run build
 
-FROM node:20-alpine AS prod
-
-WORKDIR /app
-
-COPY --from=build /app/package*.json .
-COPY --from=deps-prod /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+# Указываем команду запуска
+CMD ["node", "dist/app.js"]
