@@ -44,7 +44,7 @@ export class SheetsService {
       console.log(`Headers: ${headers}`)
 
       // create rows for insert to google spreadsheets
-      const rows = tariffsBatch.box_tariffs.map((tariff: IBoxTariff) => [
+      let rows = tariffsBatch.box_tariffs.map((tariff: IBoxTariff) => [
         todayDate,
         dateToYyyyMmDdPipe(tariffsBatch.dt_next_box),
         dateToYyyyMmDdPipe(tariffsBatch.dt_till_max),
@@ -60,6 +60,8 @@ export class SheetsService {
         tariff.geo_name,
         tariff.warehouse_name,
       ]);
+      
+      rows = this._sortGoogleSheetRows(rows, 7);
       
       console.log(`rows: ${JSON.stringify(rows)}`);
 
@@ -96,4 +98,15 @@ export class SheetsService {
       },
     });
   }
+
+
+private _sortGoogleSheetRows(rows: string[][], columnIndex = 0): string[][] {
+  return rows.sort((a, b) => {
+    const num1 = (a[columnIndex] === '-' || !a[columnIndex]) ? Infinity : parseInt(a[columnIndex], 10);
+    const num2 = (b[columnIndex] === '-' || !b[columnIndex]) ? Infinity : parseInt(b[columnIndex], 10);
+    return num1 - num2;
+  });
+}
+
+
 }
