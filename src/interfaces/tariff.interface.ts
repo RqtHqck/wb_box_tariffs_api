@@ -1,5 +1,3 @@
-
-
 export interface IBoxTariff {
   boxDeliveryBase: string;
   boxDeliveryCoefExpr: string;
@@ -15,7 +13,14 @@ export interface IBoxTariff {
 }
 
 export interface ITariffBatch {
+  date: string;
   dtNextBox: Date;
   dtTillMax: Date;
   warehouseList: IBoxTariff[]
+}
+
+export interface ITariffGoogleSheet extends IBoxTariff {
+  date: Date;
+  dtNextBox: Date;
+  dtTillMax: Date;
 }

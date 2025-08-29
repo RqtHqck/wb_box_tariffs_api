@@ -4,52 +4,47 @@ import ServerTemporarilyUnavailableError from "#errors/ServiceTemporarilyUnavail
 import { IWbApiResponse } from "#interfaces/responses.interface.js";
 import { handleError } from "#utils/errorHandler.js";
 import knex from "#postgres/knex.js";
+import { ITariffBatch } from "#interfaces/tariff.interface.js";
+import { TariffsRepository } from "#repository/tariffs.repository.js";
 
 export class TariffsService {
     private WB_TARIFF_API_URL = env.WB_TARIFF_API_URL
     private WB_API_BEARER_TOKEN = env.WB_API_BEARER_TOKEN
 
-    constructor() {}
+    constructor(private readonly tariffsRepository: TariffsRepository) {}
 
     async syncTariffs(): Promise<void> {
-        const trx = await knex.transaction();
-
-        const todayDate = this.getToday();
-
-        const apiData = await this.fetchWbApi({ date: todayDate });
-        const tariffsData = apiData.response.data;
-        const warehouseList = tariffsData.warehouseList
-
-        console.log(tariffsData);
-
         try {
-            // try to find existing batch
-            let tariffsBatch = await trx('tariff_batches')
-                .select('id')
-                .where({ date: todayDate })
-                .first();
 
-            // if batch not exists
-            if (!tariffsBatch) {
-                // insert batch information
-                [tariffsBatch] = await trx('tariff_batches')
-                    .insert({
+            const todayDate = this.getToday();
+
+            const apiData = await this.fetchWbApi({ date: todayDate });
+            const tariffsData: ITariffBatch = {
+                date: todayDate,
+                dtNextBox: apiData.response.data.dtNextBox,
+                dtTillMax: apiData.response.data.dtTillMax,
+                warehouseList: apiData.response.data.warehouseList
+            };
+            
+            const warehouseList = tariffsData.warehouseList
+
+            await knex.transaction(async trx => {
+                let tariffsBatch = await this.tariffsRepository.findBatchByDate(todayDate, trx);
+                console.log('tariffsBatch:', JSON.stringify(tariffsBatch));
+
+                if (!tariffsBatch) {
+                    tariffsBatch = await this.tariffsRepository.insertBatch({
                         dt_next_box: tariffsData.dtNextBox,
                         dt_till_max: tariffsData.dtTillMax,
                         date: todayDate,
-                    })
-                    .returning('id');
-            }
-            const batchId = tariffsBatch.id
+                    }, trx);
+                }
 
-            await trx('box_tariffs')
-                .where({ batch_id: batchId })
-                .del();
+                await this.tariffsRepository.deleteBoxTariffs(tariffsBatch.id, trx);
 
-            // insert tariff warehouses
-            for (const tariff of warehouseList) {
-                await trx('box_tariffs').insert({
-                    batch_id: batchId,
+                // insert tariff warehouses
+                const rows = warehouseList.map(tariff => ({
+                    batch_id: tariffsBatch.id,
                     box_delivery_base: this.stringAsNumberValuePipe(tariff.boxDeliveryBase),
                     box_delivery_coef_expr: this.stringAsNumberValuePipe(tariff.boxDeliveryCoefExpr),
                     box_delivery_liter: this.stringAsNumberValuePipe(tariff.boxDeliveryLiter),
@@ -61,12 +56,15 @@ export class TariffsService {
                     box_storage_liter: this.stringAsNumberValuePipe(tariff.boxStorageLiter),
                     geo_name: tariff.geoName,
                     warehouse_name: tariff.warehouseName,
-                });
-            }
+                }));
+                
+                await trx('box_tariffs').insert(rows);
+            });
+
+
             
-            await trx.commit();
+            // await trx.commit();
         } catch (err) {
-            await trx.rollback();
             handleError(new ServiceError({
                 code: "service_error",
                 text: "Something went wrong during sync work",
