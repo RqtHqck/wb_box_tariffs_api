@@ -39,18 +39,19 @@ async findBatchByDate(date: string, trx?: Knex.Transaction) {
   async insertBoxTariffs(batchId: number, tariffs: IBoxTariff[], trx?: Knex.Transaction) {
     const rows = tariffs.map(t => ({
       batch_id: batchId,
-      box_delivery_base: t.boxDeliveryBase,
-      box_delivery_coef_expr: t.boxDeliveryCoefExpr,
-      box_delivery_liter: t.boxDeliveryLiter,
-      box_delivery_marketplace_base: t.boxDeliveryMarketplaceBase,
-      box_delivery_marketplace_coef_expr: t.boxDeliveryMarketplaceCoefExpr,
-      box_delivery_marketplace_liter: t.boxDeliveryMarketplaceLiter,
-      box_storage_base: t.boxStorageBase,
-      box_storage_coef_expr: t.boxStorageCoefExpr,
-      box_storage_liter: t.boxStorageLiter,
-      geo_name: t.geoName,
-      warehouse_name: t.warehouseName
+      box_delivery_base: t.box_delivery_base,
+      box_delivery_coef_expr: t.box_delivery_coef_expr,
+      box_delivery_liter: t.box_delivery_liter,
+      box_delivery_marketplace_base: t.box_delivery_marketplace_base,
+      box_delivery_marketplace_coef_expr: t.box_delivery_marketplace_coef_expr,
+      box_delivery_marketplace_liter: t.box_delivery_marketplace_liter,
+      box_storage_base: t.box_storage_base,
+      box_storage_coef_expr: t.box_storage_coef_expr,
+      box_storage_liter: t.box_storage_liter,
+      geo_name: t.geo_name,
+      warehouse_name: t.warehouse_name
     }));
+
     await (trx ?? this.knex)('box_tariffs').insert(rows);
   }
 }

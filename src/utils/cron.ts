@@ -4,9 +4,12 @@ import { handleError } from "./errorHandler.js";
 import CronError from "#errors/Cron.error.js";
 import { SheetsService } from "#services/sheets.service.js";
 import client from "./googleapi.js";
+import { TariffsRepository } from "#repository/tariffs.repository.js";
+import knex from "#postgres/knex.js";
 
-const tariffsService = new TariffsService()
-const sheetsService = new SheetsService(client as any);
+const tariffsRepository = new TariffsRepository(knex);
+const tariffsService = new TariffsService(tariffsRepository)
+const sheetsService = new SheetsService(client as any, tariffsRepository);
 
 export const sheduleCrone = async () => {
   try {

@@ -4,78 +4,86 @@ import ServerTemporarilyUnavailableError from "#errors/ServiceTemporarilyUnavail
 import { IWbApiResponse } from "#interfaces/responses.interface.js";
 import { handleError } from "#utils/errorHandler.js";
 import knex from "#postgres/knex.js";
-import { ITariffBatch } from "#interfaces/tariff.interface.js";
+import { ITariffBatch, IBoxTariff } from "#interfaces/tariff.interface.js";
 import { TariffsRepository } from "#repository/tariffs.repository.js";
+import { getToday } from "#helpers/getToday.js";
+import { stringAsNumberValuePipe } from "#helpers/pipes.js";
 
 export class TariffsService {
-    private WB_TARIFF_API_URL = env.WB_TARIFF_API_URL
-    private WB_API_BEARER_TOKEN = env.WB_API_BEARER_TOKEN
+    private WB_TARIFF_API_URL = env.WB_TARIFF_API_URL;
+    private WB_API_BEARER_TOKEN = env.WB_API_BEARER_TOKEN;
 
     constructor(private readonly tariffsRepository: TariffsRepository) {}
 
     async syncTariffs(): Promise<void> {
         try {
-
-            const todayDate = this.getToday();
+            const todayDate = getToday();
 
             const apiData = await this.fetchWbApi({ date: todayDate });
             const tariffsData: ITariffBatch = {
                 date: todayDate,
-                dtNextBox: apiData.response.data.dtNextBox,
-                dtTillMax: apiData.response.data.dtTillMax,
-                warehouseList: apiData.response.data.warehouseList
+                dt_next_box: apiData.response.data.dtNextBox,
+                dt_till_max: apiData.response.data.dtTillMax,
+                warehouse_list: apiData.response.data.warehouseList.map(w => ({
+                    box_delivery_base: w.boxDeliveryBase,
+                    box_delivery_coef_expr: w.boxDeliveryCoefExpr,
+                    box_delivery_liter: w.boxDeliveryLiter,
+                    box_delivery_marketplace_base: w.boxDeliveryMarketplaceBase,
+                    box_delivery_marketplace_coef_expr: w.boxDeliveryMarketplaceCoefExpr,
+                    box_delivery_marketplace_liter: w.boxDeliveryMarketplaceLiter,
+                    box_storage_base: w.boxStorageBase,
+                    box_storage_coef_expr: w.boxStorageCoefExpr,
+                    box_storage_liter: w.boxStorageLiter,
+                    geo_name: w.geoName,
+                    warehouse_name: w.warehouseName
+                }))
             };
-            
-            const warehouseList = tariffsData.warehouseList
 
             await knex.transaction(async trx => {
                 let tariffsBatch = await this.tariffsRepository.findBatchByDate(todayDate, trx);
                 console.log('tariffsBatch:', JSON.stringify(tariffsBatch));
 
                 if (!tariffsBatch) {
+                    // tariff by date doesn't exist => create batch
                     tariffsBatch = await this.tariffsRepository.insertBatch({
-                        dt_next_box: tariffsData.dtNextBox,
-                        dt_till_max: tariffsData.dtTillMax,
+                        dt_next_box: tariffsData.dt_next_box,
+                        dt_till_max: tariffsData.dt_till_max,
                         date: todayDate,
                     }, trx);
                 }
 
+                // clear tariffs batch warehouse
                 await this.tariffsRepository.deleteBoxTariffs(tariffsBatch.id, trx);
 
                 // insert tariff warehouses
-                const rows = warehouseList.map(tariff => ({
-                    batch_id: tariffsBatch.id,
-                    box_delivery_base: this.stringAsNumberValuePipe(tariff.boxDeliveryBase),
-                    box_delivery_coef_expr: this.stringAsNumberValuePipe(tariff.boxDeliveryCoefExpr),
-                    box_delivery_liter: this.stringAsNumberValuePipe(tariff.boxDeliveryLiter),
-                    box_delivery_marketplace_base: this.stringAsNumberValuePipe(tariff.boxDeliveryMarketplaceBase),
-                    box_delivery_marketplace_coef_expr: this.stringAsNumberValuePipe(tariff.boxDeliveryMarketplaceCoefExpr),
-                    box_delivery_marketplace_liter: this.stringAsNumberValuePipe(tariff.boxDeliveryMarketplaceLiter),
-                    box_storage_base: this.stringAsNumberValuePipe(tariff.boxStorageBase),
-                    box_storage_coef_expr: this.stringAsNumberValuePipe(tariff.boxStorageCoefExpr),
-                    box_storage_liter: this.stringAsNumberValuePipe(tariff.boxStorageLiter),
-                    geo_name: tariff.geoName,
-                    warehouse_name: tariff.warehouseName,
+                const rows: IBoxTariff[] = tariffsData.warehouse_list.map(tariff => ({
+                    box_delivery_base: stringAsNumberValuePipe(tariff.box_delivery_base),
+                    box_delivery_coef_expr: stringAsNumberValuePipe(tariff.box_delivery_coef_expr),
+                    box_delivery_liter: stringAsNumberValuePipe(tariff.box_delivery_liter),
+                    box_delivery_marketplace_base: stringAsNumberValuePipe(tariff.box_delivery_marketplace_base),
+                    box_delivery_marketplace_coef_expr: stringAsNumberValuePipe(tariff.box_delivery_marketplace_coef_expr),
+                    box_delivery_marketplace_liter: stringAsNumberValuePipe(tariff.box_delivery_marketplace_liter),
+                    box_storage_base: stringAsNumberValuePipe(tariff.box_storage_base),
+                    box_storage_coef_expr: stringAsNumberValuePipe(tariff.box_storage_coef_expr),
+                    box_storage_liter: stringAsNumberValuePipe(tariff.box_storage_liter),
+                    geo_name: tariff.geo_name,
+                    warehouse_name: tariff.warehouse_name,
+                    batch_id: tariffsBatch.id 
                 }));
-                
+
                 await trx('box_tariffs').insert(rows);
             });
-
-
-            
-            // await trx.commit();
         } catch (err) {
             handleError(new ServiceError({
                 code: "service_error",
                 text: "Something went wrong during sync work",
                 data: err as Error
-            }))
+            }));
         }
     }
-    
-    async fetchWbApi(reqParams: Record<string, string>): Promise<IWbApiResponse> {
 
-        console.log('WB API URL: ' + this.WB_TARIFF_API_URL)
+    async fetchWbApi(reqParams: Record<string, string>): Promise<IWbApiResponse> {
+        console.log('WB API URL: ' + this.WB_TARIFF_API_URL);
         const url = `${this.WB_TARIFF_API_URL}?${new URLSearchParams(reqParams)}`;
         const props: RequestInit = {
             method: "GET",
@@ -83,21 +91,19 @@ export class TariffsService {
                 "Authorization": `Bearer ${this.WB_API_BEARER_TOKEN}`,
                 "Content-Type": "application/json"
             }
-        }
+        };
         console.log('REQUEST TO URL: ' + url);
-        
-        const response = await fetch(url, props);
 
+        const response = await fetch(url, props);
         this.handleWbApiErrors(response);
 
         const data: IWbApiResponse = await response.json();
         console.log("[WB API] Response:", data);
-                    
+
         return data;
     }
 
     private async handleWbApiErrors(response: Response): Promise<void> {
-
         if (response.status === 503) {
             handleError(new ServerTemporarilyUnavailableError({
                 code: "service_temporarily_unavailable",
@@ -112,15 +118,5 @@ export class TariffsService {
                 data: { status: response.status, url: response.url },
             }));
         }
-    }
-
-    getToday(): string {
-        const date = new Date().toISOString().slice(0, 10); 
-        console.log(`Date: ${date}`);
-        return date;
-    }
-
-    stringAsNumberValuePipe(field: string) {
-        return field === "-" ? null : field;
     }
 }
