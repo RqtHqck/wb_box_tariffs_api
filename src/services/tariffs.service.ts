@@ -5,7 +5,7 @@ import { IWbApiResponse } from "#interfaces/responses.interface.js";
 import { handleError } from "#utils/errorHandler.js";
 import knex from "#postgres/knex.js";
 import { ITariffBatch, IBoxTariff } from "#interfaces/tariff.interface.js";
-import { TariffsRepository } from "#repository/tariffs.repository.js";
+import { TariffsRepository } from "#repositories/tariffs.repository.js";
 import { getToday } from "#helpers/getToday.js";
 import { stringAsNumberValuePipe } from "#helpers/pipes.js";
 

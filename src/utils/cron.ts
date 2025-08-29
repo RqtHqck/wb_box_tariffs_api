@@ -4,8 +4,9 @@ import { handleError } from "./errorHandler.js";
 import CronError from "#errors/Cron.error.js";
 import { SheetsService } from "#services/sheets.service.js";
 import client from "./googleapi.js";
-import { TariffsRepository } from "#repository/tariffs.repository.js";
+import { TariffsRepository } from "#repositories/tariffs.repository.js";
 import knex from "#postgres/knex.js";
+import { retry } from "#helpers/retry.js";
 
 const tariffsRepository = new TariffsRepository(knex);
 const tariffsService = new TariffsService(tariffsRepository)
@@ -13,11 +14,12 @@ const sheetsService = new SheetsService(client as any, tariffsRepository);
 
 export const sheduleCrone = async () => {
   try {
-    cron.schedule('*/20 * * * * *', async () => {
+    cron.schedule('0 * * * *', async () => {
         console.log('Sync tariffs...');
-        
-        await tariffsService.syncTariffs();
-        await sheetsService.syncTariffs();
+        await retry(async () => {
+          await tariffsService.syncTariffs();
+          await sheetsService.syncTariffs();
+        }, 5, 2500)
       });
   } catch (err) {
     handleError(new CronError({

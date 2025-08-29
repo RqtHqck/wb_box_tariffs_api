@@ -6,3 +6,6 @@ export function dateToYyyyMmDdPipe(date: string | Date) {
     if (!date) return null;
     return (date instanceof Date ? date.toISOString() : date).slice(0, 10);
 }
+export function nullToDashPipe(some: string | null): string {
+    return !some ? '-' : some;
+}
