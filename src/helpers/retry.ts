@@ -10,8 +10,7 @@ export async function retry<T>(
             attempt++;
 
             const result = await callback();
-            console.log(`Retry operation successful on attempt ${attempt}`);
-
+            
             return result;
         } catch (err) {
             console.log(`Attempt ${attempt} failed`);

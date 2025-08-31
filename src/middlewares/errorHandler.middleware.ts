@@ -1,6 +1,5 @@
-import { BaseError, TErrorData } from '#errors/BaseError.js';
 import { handleError } from '#utils/errorHandler.js';
-import {ErrorRequestHandler, Request, Response} from 'express';
+import {ErrorRequestHandler} from 'express';
 
 
 export const ErrorsHandlerMiddleware: ErrorRequestHandler = (
